@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saken Village · Front Office Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+:root{--bg:#060c17;--sf:#0c1520;--sf2:#111d2e;--bd:#1a2d42;--acc:#e8a020;--bl:#3b82f6;--gr:#10b981;--rd:#ef4444;--pu:#a855f7;--tx:#eef2f8;--mu:#5a7499;--mu2:#8ba4c0;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+/* UPLOAD */
+#scr-up{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px;background:radial-gradient(ellipse at 20% 20%,#0d2040,var(--bg) 60%);}
+.logo-row{display:flex;align-items:center;gap:12px;margin-bottom:44px;}
+.logo-hex{font-size:26px;color:var(--acc);}
+.logo-text{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:2px;}
+.logo-text em{color:var(--acc);font-style:normal;}
+.logo-sub{font-size:10px;color:var(--mu2);letter-spacing:3px;text-transform:uppercase;display:block;margin-top:2px;}
+.hero{font-family:'Syne',sans-serif;font-size:clamp(30px,5vw,58px);font-weight:800;text-align:center;line-height:1.1;margin-bottom:14px;}
+.hero em{background:linear-gradient(135deg,var(--acc),#f5d070);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-style:normal;}
+.hero-sub{color:var(--mu2);font-size:14px;text-align:center;max-width:460px;line-height:1.8;margin-bottom:44px;}
+.dz{width:100%;max-width:520px;background:var(--sf);border:2px dashed var(--bd);border-radius:20px;padding:52px 36px;text-align:center;cursor:pointer;transition:all .3s;position:relative;}
+.dz:hover,.dz.hl{border-color:var(--acc);background:var(--sf2);box-shadow:0 0 40px rgba(232,160,32,.1);}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dz-ico{font-size:50px;margin-bottom:14px;display:block;}
+.dz-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:8px;}
+.dz-hint{color:var(--mu);font-size:12px;line-height:1.7;}
+.feats{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin-top:30px;max-width:520px;}
+.feat{display:flex;align-items:center;gap:6px;background:var(--sf);border:1px solid var(--bd);border-radius:20px;padding:5px 13px;font-size:11px;color:var(--mu2);}
+.fd{width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0;}
+.email-box{margin-top:28px;max-width:520px;width:100%;background:linear-gradient(135deg,#0e1e35,#0c1520);border:1px solid rgba(59,130,246,.25);border-radius:14px;padding:18px 22px;}
+.email-hd{font-size:11px;font-weight:600;color:var(--bl);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.email-body{font-size:12px;color:var(--mu2);line-height:1.8;}
+.em-addr{font-family:monospace;font-size:12px;color:var(--acc);background:rgba(232,160,32,.1);padding:1px 7px;border-radius:4px;}
+.err-box{display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:16px;margin-top:14px;max-width:520px;width:100%;font-size:12px;color:#fca5a5;line-height:1.7;white-space:pre-wrap;}
+/* LOADING */
+#scr-ld{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;}
+.ring{width:52px;height:52px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-name{font-family:'Syne',sans-serif;font-size:15px;color:var(--mu2);}
+.ld-prog{width:250px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden;}
+.ld-bar{height:100%;background:linear-gradient(90deg,var(--acc),#f5d070);border-radius:2px;width:0;transition:width .35s ease;}
+.ld-step{font-size:11px;color:var(--mu);margin-top:2px;}
+/* DASHBOARD */
+#scr-dash{display:none;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--sf);border-bottom:1px solid var(--bd);padding:0 26px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;gap:10px;}
+.tb-left{display:flex;align-items:center;gap:10px;}
+.tb-brand{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;letter-spacing:1px;}
+.tb-brand em{color:var(--acc);font-style:normal;}
+.badge{background:var(--sf2);border:1px solid var(--bd);border-radius:5px;padding:3px 10px;font-size:11px;color:var(--mu2);}
+.badge-live{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--gr);}
+.nav{display:flex;gap:2px;background:var(--sf2);padding:3px;border-radius:10px;border:1px solid var(--bd);}
+.nb{background:none;border:none;color:var(--mu);font-size:12px;font-weight:500;padding:6px 13px;border-radius:7px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.nb.on{background:var(--acc);color:#000;font-weight:700;}
+.nb:not(.on):hover{color:var(--tx);}
+.reset-btn{background:none;border:1px solid var(--bd);color:var(--mu);padding:6px 13px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.reset-btn:hover{border-color:var(--acc);color:var(--acc);}
+.page{flex:1;padding:22px 26px;max-width:1700px;margin:0 auto;width:100%;}
+.tab{display:none;animation:fi .2s ease;}
+.tab.on{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* CARDS */
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:13px;padding:20px 22px;margin-bottom:18px;}
+.ch{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--mu2);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.pill{font-size:10px;background:var(--sf2);border:1px solid var(--bd);color:var(--mu2);padding:2px 9px;border-radius:20px;text-transform:none;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400;}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:18px;}
+.kpi{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:17px 19px;position:relative;overflow:hidden;transition:border-color .2s,transform .15s;}
+.kpi:hover{border-color:var(--acc);transform:translateY(-1px);}
+.ks{position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 12px 12px;}
+.kl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--mu);margin-bottom:7px;}
+.kv{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1;margin-bottom:4px;}
+.ksub{font-size:11px;color:var(--mu2);}
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:18px;}
+.g12{display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:18px;}
+/* OCC BARS */
+.occ-bars{display:flex;flex-direction:column;gap:10px;}
+.occ-row{display:flex;align-items:center;gap:9px;}
+.occ-lbl{width:115px;font-size:10px;font-weight:500;color:var(--mu2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;}
+.occ-track{flex:1;height:7px;background:var(--sf2);border-radius:4px;overflow:hidden;}
+.occ-fill{height:100%;border-radius:4px;transition:width 1.2s cubic-bezier(.34,1.56,.64,1);}
+.occ-pct{width:42px;font-size:11px;font-weight:700;flex-shrink:0;}
+.occ-cnt{font-size:10px;color:var(--mu);width:54px;text-align:right;flex-shrink:0;}
+/* ACTIVITY */
+.al{display:flex;flex-direction:column;gap:6px;}
+.ai{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--sf2);border-radius:8px;border:1px solid var(--bd);}
+.ar{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--bl);min-width:72px;}
+.ac{font-size:12px;color:var(--mu2);flex:1;}
+.atag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;}
+.tout{background:rgba(239,68,68,.15);color:#ef4444;}
+.tin{background:rgba(16,185,129,.15);color:#10b981;}
+.empty-msg{color:var(--mu);font-size:12px;padding:16px;text-align:center;}
+/* STAT ROWS */
+.sr{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd);}
+.sr:last-child{border:none;}
+.srl{font-size:13px;color:var(--mu2);}
+.srv{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+/* MAP */
+#mapwrap{background:#07101e;border-radius:10px;border:1px solid var(--bd);overflow:hidden;}
+.mtt{position:fixed;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:11px 15px;pointer-events:none;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.7);display:none;min-width:160px;}
+.mtt-iso{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--mu);margin-bottom:3px;}
+.mtt-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--tx);margin-bottom:5px;}
+.mtt-stat{color:var(--acc);font-size:12px;font-weight:600;}
+.mleg{display:flex;align-items:center;gap:18px;margin-top:12px;flex-wrap:wrap;}
+.mgrad{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--mu2);}
+.grad{width:100px;height:7px;border-radius:4px;background:linear-gradient(to right,#1a3d7a,#2272d8,#38a8e8,#f5b830,#e82020);}
+.mstat{font-size:11px;color:var(--mu2);}
+.mstat strong{color:var(--tx);}
+.mbtns{display:flex;gap:5px;}
+.mbtn{background:var(--sf2);border:1px solid var(--bd);color:var(--mu2);padding:4px 11px;border-radius:6px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.mbtn.on{background:var(--acc);border-color:var(--acc);color:#000;font-weight:700;}
+/* NAT */
+.nlist{display:flex;flex-direction:column;gap:5px;max-height:400px;overflow-y:auto;}
+.nrow{display:flex;align-items:center;gap:9px;padding:7px 12px;background:var(--sf2);border-radius:7px;border:1px solid var(--bd);}
+.niso{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;width:34px;color:var(--bl);}
+.nnm{flex:1;font-size:12px;color:var(--mu2);}
+.nbw{width:75px;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;}
+.nbf{height:100%;border-radius:3px;}
+.nct{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;min-width:24px;text-align:right;}
+/* TABLE */
+.sbar{width:100%;background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;color:var(--tx);font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:12px;outline:none;transition:border-color .2s;}
+.sbar:focus{border-color:var(--bl);}
+.sbar::placeholder{color:var(--mu);}
+.frow{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;}
+.fsel{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:7px 11px;border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;}
+.tw{overflow:auto;max-height:500px;border-radius:9px;border:1px solid var(--bd);}
+.dt{width:100%;border-collapse:collapse;font-size:12px;}
+.dt th{text-align:left;padding:9px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);border-bottom:1px solid var(--bd);background:var(--sf);position:sticky;top:0;z-index:5;white-space:nowrap;}
+.dt td{padding:9px 12px;border-bottom:1px solid rgba(26,45,66,.45);vertical-align:middle;}
+.dt tr:hover td{background:var(--sf2);}
+.ntag{display:inline-flex;align-items:center;justify-content:center;width:30px;height:18px;background:var(--sf2);border-radius:3px;font-size:10px;font-weight:700;color:var(--mu2);}
+.sb{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;text-transform:uppercase;}
+.sl{background:rgba(59,130,246,.15);color:#60a5fa;}
+.ss{background:rgba(232,160,32,.15);color:#fbbf24;}
+/* CO */
+.colist{display:flex;flex-direction:column;gap:5px;max-height:510px;overflow-y:auto;}
+.coi{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--sf2);border-radius:8px;border:1px solid var(--bd);transition:border-color .2s;}
+.coi:hover{border-color:var(--acc);}
+.cork{width:20px;font-size:10px;font-weight:700;color:var(--mu);text-align:center;}
+.conm{flex:1;font-size:12px;font-weight:500;}
+.cobw{width:70px;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;}
+.cob{height:100%;border-radius:3px;background:var(--bl);}
+.corm{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--acc);min-width:26px;text-align:right;}
+.copx{font-size:11px;color:var(--mu);min-width:30px;text-align:right;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--sf);}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px;}
+@media(max-width:880px){.g2,.g21,.g12{grid-template-columns:1fr!important;}.page{padding:14px 12px;}.topbar{flex-wrap:wrap;height:auto;padding:10px 14px;}.nav{overflow-x:auto;}}
+</style>
+</head>
+<body>
+
+<!-- UPLOAD -->
+<div id="scr-up">
+  <div class="logo-row">
+    <span class="logo-hex">⬡</span>
+    <div>
+      <div class="logo-text">SAKEN <em>VILLAGE</em></div>
+      <span class="logo-sub">Jubail Industrial City · KSA</span>
+    </div>
+  </div>
+  <h1 class="hero">Front Office<br><em>Dashboard</em></h1>
+  <p class="hero-sub">Drop your daily Excel report — get an instant interactive dashboard with occupancy, world map, guests, companies and revenue. Share the link. Nothing to install.</p>
+  <div class="dz" id="dz">
+    <input type="file" id="fi" accept=".xlsx,.xls">
+    <span class="dz-ico">📊</span>
+    <div class="dz-title">Drop your Excel report here</div>
+    <div class="dz-hint"><strong style="color:var(--mu2)">Front_Office_Report_DD-MM-YY.xlsx</strong><br>or click to browse</div>
+  </div>
+  <div class="err-box" id="err-box"></div>
+  <div class="feats">
+    <div class="feat"><div class="fd"></div>Overall occupancy</div>
+    <div class="feat"><div class="fd"></div>Unit-type breakdown</div>
+    <div class="feat"><div class="fd"></div>Check-in / check-out</div>
+    <div class="feat"><div class="fd"></div>Interactive world map</div>
+    <div class="feat"><div class="fd"></div>218 guests · searchable</div>
+    <div class="feat"><div class="fd"></div>Revenue KPIs</div>
+  </div>
+  <div class="email-box">
+    <div class="email-hd">📧 Daily Outlook workflow</div>
+    <div class="email-body">
+      Your helpdesk sends the report to <span class="em-addr">fawzy@saken.sa</span><br>
+      Save attachment → drop here → share updated link. <strong>No server. No login. Fully private.</strong>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="scr-ld">
+  <div class="ring"></div>
+  <div class="ld-name" id="ld-name">Reading file…</div>
+  <div class="ld-prog"><div class="ld-bar" id="ld-bar"></div></div>
+  <div class="ld-step" id="ld-step">Initialising…</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="scr-dash">
+  <div class="topbar">
+    <div class="tb-left">
+      <span style="font-size:16px;color:var(--acc)">⬡</span>
+      <div class="tb-brand">SAKEN <em>VILLAGE</em></div>
+      <div class="badge" id="tb-date">—</div>
+      <div class="badge badge-live">● LIVE</div>
+    </div>
+    <div class="nav">
+      <button class="nb on" onclick="showTab('ov',this)">Overview</button>
+      <button class="nb" onclick="showTab('wm',this)">🌍 World Map</button>
+      <button class="nb" onclick="showTab('gs',this)">Guests</button>
+      <button class="nb" onclick="showTab('co',this)">Companies</button>
+      <button class="nb" onclick="showTab('rv',this)">Revenue</button>
+    </div>
+    <button class="reset-btn" onclick="resetDash()">↑ New Report</button>
+  </div>
+
+  <div class="page">
+
+    <!-- OVERVIEW -->
+    <div id="tab-ov" class="tab on">
+      <div class="kpis" id="kpis"></div>
+      <div class="g21">
+        <div class="card">
+          <div class="ch">Occupancy by Unit Type <span class="pill" id="occ-pill">718 total units</span></div>
+          <div class="occ-bars" id="occ-bars"></div>
+        </div>
+        <div class="card">
+          <div class="ch">Stay Mix</div>
+          <canvas id="ch-stay" style="max-height:210px"></canvas>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="ch">Today's Check-Outs <span class="pill" id="cout-pill">0</span></div>
+          <div class="al" id="cout-list"></div>
+        </div>
+        <div class="card">
+          <div class="ch">Today's Check-Ins <span class="pill" id="cin-pill">0</span></div>
+          <div class="al" id="cin-list"></div>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ch">SRC — Saken Residential Complex</div><div id="src-st"></div></div>
+        <div class="card"><div class="ch">Saken Village Breakdown</div><div id="sak-st"></div></div>
+      </div>
+    </div>
+
+    <!-- WORLD MAP -->
+    <div id="tab-wm" class="tab">
+      <div class="card" style="margin-bottom:16px">
+        <div class="ch">Guest Nationality — Geographic Distribution
+          <div class="mbtns">
+            <button class="mbtn on" onclick="setMapMode('pax',this)">By Pax</button>
+            <button class="mbtn" onclick="setMapMode('rooms',this)">By Rooms</button>
+          </div>
+        </div>
+        <div id="mapwrap">
+          <div id="map-ph" style="height:400px;display:flex;align-items:center;justify-content:center;color:var(--mu2);font-size:13px;gap:10px">
+            <div style="width:22px;height:22px;border:2px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite"></div>
+            Loading world map…
+          </div>
+        </div>
+        <div class="mleg">
+          <div class="mgrad"><span>1</span><div class="grad"></div><span id="mmax">66</span></div>
+          <div class="mstat">Countries: <strong id="mco">36</strong></div>
+          <div class="mstat">Total Pax: <strong id="mpx">327</strong></div>
+          <div class="mstat" style="color:var(--gr)">📍 Jubail, KSA</div>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ch">Nationalities by Pax</div><div class="nlist" id="nat-list"></div></div>
+        <div class="card"><div class="ch">Pax Distribution</div><canvas id="ch-nat" style="max-height:360px"></canvas></div>
+      </div>
+    </div>
+
+    <!-- GUESTS -->
+    <div id="tab-gs" class="tab">
+      <div class="card">
+        <div class="ch">Guest Roster — Present Occupancy <span class="pill" id="g-pill">218 guests</span></div>
+        <input type="text" class="sbar" id="g-search" placeholder="Search name, room, company, nationality…" oninput="filterG()">
+        <div class="frow">
+          <select class="fsel" id="f-seg" onchange="filterG()">
+            <option value="">All Stay Types</option>
+            <option value="Long Stay">Long Stay</option>
+            <option value="Short Stay">Short Stay</option>
+            <option value="TravelAgnt">Travel Agent</option>
+          </select>
+          <select class="fsel" id="f-type" onchange="filterG()">
+            <option value="">All Unit Types</option>
+            <option value="STU">Studio</option>
+            <option value="4BR">4 Bedroom</option>
+            <option value="1BR">1 Bedroom</option>
+            <option value="2BR">2 Bedroom</option>
+            <option value="3BR">3 Bedroom</option>
+          </select>
+          <select class="fsel" id="f-nat" onchange="filterG()"><option value="">All Nationalities</option></select>
+          <select class="fsel" id="f-sob" onchange="filterG()">
+            <option value="">All Sources</option>
+            <option value="Corporate">Corporate</option>
+            <option value="WalkIn">Walk In</option>
+          </select>
+        </div>
+        <div class="tw">
+          <table class="dt">
+            <thead><tr>
+              <th>Room</th><th>Guest Name</th><th>Company</th>
+              <th>Stay</th><th>Unit</th><th>Nat</th>
+              <th>Pax</th><th>Check-In</th><th>Check-Out</th>
+              <th>Rack SAR</th><th>Charged SAR</th>
+            </tr></thead>
+            <tbody id="g-body"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:9px;font-size:11px;color:var(--mu)" id="g-lbl"></div>
+      </div>
+    </div>
+
+    <!-- COMPANIES -->
+    <div id="tab-co" class="tab">
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr)" id="co-kpis"></div>
+      <div class="g12">
+        <div class="card"><div class="ch">All Companies — Rooms &amp; Pax</div><div class="colist" id="co-list"></div></div>
+        <div class="card"><div class="ch">Top 12 by Room Count</div><canvas id="ch-co" style="max-height:440px"></canvas></div>
+      </div>
+    </div>
+
+    <!-- REVENUE -->
+    <div id="tab-rv" class="tab">
+      <div class="kpis" style="grid-template-columns:repeat(3,1fr)" id="rev-kpis"></div>
+      <div class="g2">
+        <div class="card"><div class="ch">Rack vs Charged by Unit Type</div><canvas id="ch-runit" style="max-height:260px"></canvas></div>
+        <div class="card"><div class="ch">Top 10 Companies by Revenue (SAR Charged)</div><canvas id="ch-rco" style="max-height:260px"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="mtt" id="mtt">
+  <div class="mtt-iso" id="mtt-iso"></div>
+  <div class="mtt-name" id="mtt-name"></div>
+  <div class="mtt-stat" id="mtt-stat"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════════
+const COLS=['#ef4444','#3b82f6','#f59e0b','#10b981','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6','#fbbf24','#60a5fa','#818cf8'];
+
+// TopoJSON numeric→ISO3
+const TOPO={"032":"ARG","036":"AUS","050":"BGD","048":"BHR","076":"BRA","124":"CAN","156":"CHN","170":"COL","012":"DZA","818":"EGY","724":"ESP","250":"FRA","826":"GBR","191":"HRV","348":"HUN","360":"IDN","356":"IND","380":"ITA","400":"JOR","410":"KOR","422":"LBN","458":"MYS","586":"PAK","608":"PHL","620":"PRT","600":"PRY","643":"RUS","682":"SAU","764":"THA","792":"TUR","840":"USA","862":"VEN","887":"YEM","710":"ZAF","716":"ZWE","566":"NGA","404":"KEN","276":"DEU","300":"GRC","528":"NLD","756":"CHE","752":"SWE","372":"IRL","196":"CYP"};
+
+// OCC type colors
+const OCOLS={"Studio (Hotel Type)":"#a855f7","1BD Shared":"#06b6d4","Executive Room":"#14b8a6","Superior 1BR Apt.B":"#2d9bf0","Deluxe 1BR Apt.C":"#1d6fa8","Premium 1BR Apt.Corner":"#3b82f6","Standard 1BR Apt.Inner":"#10b981","Executive 1BR Apt.A":"#0e9870","Apartment 2 BR Apt.":"#f59e0b","Standard Villa Duplex 3BR":"#f97316","Premium Villa Duplex 3BR":"#ef4444","1BR Apt. RC":"#e8a020"};
+
+// ══════════════════════════════════════════════════════════
+// UPLOAD
+// ══════════════════════════════════════════════════════════
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('hl');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('hl'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('hl');if(e.dataTransfer.files[0])procFile(e.dataTransfer.files[0]);});
+document.getElementById('fi').addEventListener('change',e=>{if(e.target.files[0])procFile(e.target.files[0]);});
+
+function procFile(file){
+  document.getElementById('err-box').style.display='none';
+  document.getElementById('ld-name').textContent=file.name;
+  document.getElementById('scr-up').style.display='none';
+  document.getElementById('scr-ld').style.display='flex';
+  prog(10,'Reading file…');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      prog(30,'Parsing sheets…');
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      prog(55,'Extracting data…');
+      parseWB(wb);
+      prog(80,'Building dashboard…');
+      setTimeout(()=>{prog(100,'Done!');setTimeout(showDash,280);},250);
+    }catch(ex){
+      document.getElementById('scr-ld').style.display='none';
+      document.getElementById('scr-up').style.display='flex';
+      const eb=document.getElementById('err-box');
+      eb.textContent='⚠ Could not parse file:\n'+ex.message+'\n\nMake sure you upload a Front_Office_Report_*.xlsx file.';
+      eb.style.display='block';
+      document.getElementById('fi').value='';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function prog(p,s){document.getElementById('ld-bar').style.width=p+'%';document.getElementById('ld-step').textContent=s;}
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let S={guests:[],companies:[],nat:{},occ:{},checkouts:[],checkins:[],
+       src:{total:188,occ:181,pct:96.3,mtdR:181,mtdRes:272},
+       sak:{short:2.04,long:33.96,total:36},date:'',gt:{}};
+let CH={}, mapMode='pax', mapBuilt=false;
+
+// ══════════════════════════════════════════════════════════
+// PARSER — verified against exact F.O.R. column layout
+// ══════════════════════════════════════════════════════════
+function parseWB(wb){
+  // ── F.O.R. sheet ────────────────────────────────────────
+  const forSheet = wb.Sheets['F.O.R.'] || wb.Sheets[wb.SheetNames[2]] || wb.Sheets[wb.SheetNames[0]];
+  const FOR = XLSX.utils.sheet_to_json(forSheet,{header:1,defval:''});
+
+  // DATE — row 3, col 0
+  const dateStr = String(FOR[3]?.[0]||'').replace('Date Reported:','').trim();
+  S.date = dateStr || new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+  // OCCUPANCY — rows 7-19, cols: 3=name,4=short,5=long,6=total,7=units,8=occ%
+  S.occ={};
+  for(let i=6;i<20;i++){
+    const row=FOR[i]||[];
+    const name=String(row[3]||'').trim();
+    if(!name||name==='Unit type'||name==='nan') continue;
+    const total=N(row[6]), units=N(row[7]), occRaw=N(row[8]);
+    if(units===0&&total===0) continue;
+    S.occ[name]={
+      label:name, short:N(row[4]), long:N(row[5]),
+      total, units,
+      occ: occRaw>1 ? occRaw/100 : occRaw,
+      bach:N(row[9]), fam:N(row[10])
+    };
+  }
+  S.gt = S.occ['Grand Total']||{total:393,units:718,occ:0.4068,long:381,short:12,bach:321,fam:72};
+
+  // CHECK-OUTS today — col 6=unit, col 7=company, rows 24-35
+  S.checkouts=[];
+  const BAD_UNITS=new Set(['','nan','Unit','Total','.','YesterdayC/In','S.R.C. Figures']);
+  for(let i=24;i<36;i++){
+    const row=FOR[i]||[];
+    const unit=String(row[6]||'').trim();
+    const co  =String(row[7]||'').trim();
+    if(!BAD_UNITS.has(unit) && !unit.startsWith('Yesterday') && !unit.startsWith('S.R.C') && isNaN(Number(unit))){
+      S.checkouts.push({unit,co});
+    }
+  }
+
+  // CHECK-INS today — col 8=unit, col 9=company, rows 24-35
+  S.checkins=[];
+  for(let i=24;i<36;i++){
+    const row=FOR[i]||[];
+    const unit=String(row[8]||'').trim();
+    const co  =String(row[9]||'').trim();
+    if(!BAD_UNITS.has(unit) && !unit.startsWith('Yesterday') && isNaN(Number(unit))){
+      S.checkins.push({unit,co});
+    }
+  }
+
+  // NATIONALITIES — col 3=ISO, col 4=pax, rows 23-60
+  S.nat={};
+  const NAT_NAMES={"ARG":"Argentina","ASM":"Am. Samoa","AUS":"Australia","BGD":"Bangladesh","BHR":"Bahrain","BRA":"Brazil","CAN":"Canada","CHN":"China","COL":"Colombia","DZA":"Algeria","EGY":"Egypt","ESP":"Spain","GBR":"United Kingdom","HRV":"Croatia","HUN":"Hungary","IDN":"Indonesia","IND":"India","ITA":"Italy","JOR":"Jordan","KOR":"South Korea","LBN":"Lebanon","MYS":"Malaysia","PAK":"Pakistan","PHL":"Philippines","PRT":"Portugal","PRY":"Paraguay","RUS":"Russia","SAU":"Saudi Arabia","THA":"Thailand","TUR":"Turkey","UMI":"US Minor Isl.","USA":"United States","VEN":"Venezuela","YEM":"Yemen","ZAF":"South Africa","ZWE":"Zimbabwe"};
+  for(let i=23;i<62;i++){
+    const row=FOR[i]||[];
+    const iso=String(row[3]||'').trim();
+    if(iso.length===3&&/^[A-Z]+$/.test(iso)){
+      const pax=N(row[4]);
+      if(pax>0) S.nat[iso]={name:NAT_NAMES[iso]||iso,pax,rooms:0};
+    }
+  }
+
+  // SRC — rows 64-66, col 6=label, col 7=value
+  const srcRows={64:'total',65:'occ',66:'pct'};
+  const srcMap={total:188,occ:181,pct:96.3,mtdR:181,mtdRes:272};
+  if(FOR[64]) srcMap.total=N(FOR[64][7])||188;
+  if(FOR[65]) srcMap.occ  =N(FOR[65][7])||181;
+  if(FOR[66]) srcMap.pct  =(N(FOR[66][7])||0.9628)*((N(FOR[66][7])||1)<2?100:1);
+  if(FOR[52]) srcMap.mtdR =N(FOR[52][10])||181;
+  if(FOR[53]) srcMap.mtdRes=N(FOR[53][10])||272;
+  S.src=srcMap;
+
+  // SAKEN breakdown — rows 69-71, col 6=label, col 7=value
+  if(FOR[69]) S.sak.short=N(FOR[69][7])||2.04;
+  if(FOR[70]) S.sak.long =N(FOR[70][7])||33.96;
+  if(FOR[71]) S.sak.total=N(FOR[71][7])||36;
+
+  // ── IDS sheet — guests ──────────────────────────────────
+  const idsSheet=wb.Sheets['IDS'];
+  S.guests=[];
+  if(idsSheet){
+    const IDS=XLSX.utils.sheet_to_json(idsSheet,{header:1,defval:''});
+    // Header at row 1, data from row 2
+    // Cols: 0=Room,1=Name,2=Seg,3=Company,4=Group,5=Plan,6=DOA,7=DOD,8=Nat,9=Pax,10=Type,11=Status,12=Clf,13=Chg,14=Rack,15=Charged,16=Diff,17=EBed,18=Nett,19=SOB
+    for(let i=2;i<IDS.length;i++){
+      const r=IDS[i];
+      const room=String(r[0]||'').replace(/\*\*/g,'').replace(/\*/g,'').trim();
+      if(!room||room==='nan') continue;
+      const seg=String(r[2]||'').trim();
+      if(!['Long Stay','Short Stay','TravelAgnt'].includes(seg)) continue;
+      // Clean checkout date — remove " -364" type suffix
+      const dodRaw=String(r[7]||'').trim();
+      const dod=dodRaw.replace(/ -\d+$/,'').replace(/\s.*/,'');
+      S.guests.push({
+        room,
+        name:String(r[1]||'').trim().replace('nan',''),
+        seg, co:String(r[3]||'').trim().replace('nan',''),
+        doa:String(r[6]||'').trim().replace('nan',''),
+        dod,
+        nat:String(r[8]||'').trim().replace('nan',''),
+        pax:Math.max(1,Math.round(NF(r[9]))),
+        type:String(r[10]||'').trim().replace('nan',''),
+        rack:NF(r[14]), charged:NF(r[15]), nett:NF(r[18]),
+        sob:String(r[19]||'').trim().replace(/^\s+/,'')
+      });
+    }
+  }
+
+  // Add rooms count to nat
+  S.guests.forEach(g=>{if(g.nat&&S.nat[g.nat])S.nat[g.nat].rooms++;});
+
+  // Companies
+  const coMap={};
+  S.guests.forEach(g=>{
+    const k=g.co||'Unknown';
+    if(!coMap[k]) coMap[k]={name:k,rooms:0,pax:0,rack:0,charged:0};
+    coMap[k].rooms++;coMap[k].pax+=g.pax;coMap[k].rack+=g.rack;coMap[k].charged+=g.charged;
+  });
+  S.companies=Object.values(coMap).filter(c=>c.name!=='Unknown').sort((a,b)=>b.rooms-a.rooms).map(c=>({...c,rack:round2(c.rack),charged:round2(c.charged)}));
+}
+
+function N(v){const n=parseFloat(String(v).replace(/,/g,''));return isNaN(n)?0:n;}
+function NF(v){const n=parseFloat(String(v).replace(/,/g,''));return isNaN(n)?0:Math.round(n*100)/100;}
+function round2(v){return Math.round(v*100)/100;}
+
+// ══════════════════════════════════════════════════════════
+// SHOW DASHBOARD
+// ══════════════════════════════════════════════════════════
+function showDash(){
+  document.getElementById('scr-ld').style.display='none';
+  document.getElementById('scr-dash').style.display='flex';
+  document.getElementById('tb-date').textContent=S.date;
+  Object.values(CH).forEach(c=>c&&c.destroy()); CH={};
+  mapBuilt=false;
+  buildKPIs(); buildOcc(); buildStayMix(); buildCOUT(); buildSRC();
+  buildNatList(); buildNatBar(); buildGuests(); buildCompanies(); buildRevenue();
+}
+
+function resetDash(){
+  document.getElementById('scr-dash').style.display='none';
+  document.getElementById('scr-up').style.display='flex';
+  document.getElementById('fi').value='';
+  Object.values(CH).forEach(c=>c&&c.destroy()); CH={};
+  mapBuilt=false;
+}
+
+function showTab(name,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+name).classList.add('on');
+  btn.classList.add('on');
+  if(name==='wm'&&!mapBuilt){buildWorldMap();mapBuilt=true;}
+}
+
+// ══════════════════════════════════════════════════════════
+// KPIs
+// ══════════════════════════════════════════════════════════
+function buildKPIs(){
+  const gt=S.gt;
+  const occPct=gt.occ?(gt.occ>1?gt.occ:gt.occ*100).toFixed(1)+'%':'—';
+  const tp=Object.values(S.nat).reduce((s,v)=>s+v.pax,0)||S.guests.reduce((s,g)=>s+g.pax,0);
+  const ls=S.guests.filter(g=>g.seg==='Long Stay').length;
+  const ss=S.guests.filter(g=>g.seg==='Short Stay').length;
+  document.getElementById('kpis').innerHTML=[
+    {l:'Overall Occupancy',v:occPct,s:`${gt.total||393} / ${gt.units||718} units`,c:'var(--acc)'},
+    {l:'Total Pax',v:tp||S.guests.length,s:'Present in all compounds',c:'var(--bl)'},
+    {l:'Long Stay',v:ls,s:`${ls&&S.guests.length?(ls/S.guests.length*100).toFixed(0):0}% of occupied`,c:'var(--gr)'},
+    {l:'Short Stay',v:ss,s:`${ss&&S.guests.length?(ss/S.guests.length*100).toFixed(0):0}% of occupied`,c:'var(--pu)'},
+    {l:"Today's Check-Outs",v:S.checkouts.length,s:'Expected departures',c:'var(--rd)'},
+    {l:"Today's Check-Ins",v:S.checkins.length,s:'Expected arrivals',c:'var(--gr)'},
+  ].map(k=>`<div class="kpi"><div class="kl">${k.l}</div><div class="kv" style="color:${k.c}">${k.v}</div><div class="ksub">${k.s}</div><div class="ks" style="background:${k.c}"></div></div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// OCC BARS
+// ══════════════════════════════════════════════════════════
+function buildOcc(){
+  const entries=Object.entries(S.occ).filter(([k])=>!k.includes('Grand Total'));
+  const gt=S.gt;
+  document.getElementById('occ-pill').textContent=`${gt.units||718} total units`;
+  document.getElementById('occ-bars').innerHTML=entries.map(([key,d],i)=>{
+    const pct=(d.occ>1?d.occ:d.occ*100).toFixed(1);
+    const col=OCOLS[key]||COLS[i%COLS.length];
+    return`<div class="occ-row"><div class="occ-lbl" title="${d.label}">${d.label}</div><div class="occ-track"><div class="occ-fill" style="width:${pct}%;background:${col}"></div></div><div class="occ-pct" style="color:${col}">${pct}%</div><div class="occ-cnt">${d.total}/${d.units}</div></div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// STAY MIX
+// ══════════════════════════════════════════════════════════
+function buildStayMix(){
+  const ls=S.guests.filter(g=>g.seg==='Long Stay').length;
+  const ss=S.guests.filter(g=>g.seg==='Short Stay').length;
+  const ta=S.guests.filter(g=>g.seg==='TravelAgnt').length;
+  if(CH.sm)CH.sm.destroy();
+  CH.sm=new Chart(document.getElementById('ch-stay'),{
+    type:'doughnut',
+    data:{labels:['Long Stay','Short Stay','Travel Agent'],datasets:[{data:[ls,ss,ta],backgroundColor:['#3b82f6','#e8a020','#a855f7'],borderWidth:0,hoverOffset:8}]},
+    options:{responsive:true,cutout:'70%',plugins:{legend:{position:'bottom',labels:{color:'#8ba4c0',font:{size:11},padding:12}},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}`}}}}
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// CHECK IN / OUT
+// ══════════════════════════════════════════════════════════
+function buildCOUT(){
+  document.getElementById('cout-pill').textContent=S.checkouts.length;
+  document.getElementById('cin-pill').textContent=S.checkins.length;
+  document.getElementById('cout-list').innerHTML=S.checkouts.length
+    ?S.checkouts.map(c=>`<div class="ai"><div class="ar">${c.unit}</div><div class="ac">${c.co}</div><span class="atag tout">Out</span></div>`).join('')
+    :'<div class="empty-msg">No check-outs today</div>';
+  document.getElementById('cin-list').innerHTML=S.checkins.length
+    ?S.checkins.map(c=>`<div class="ai"><div class="ar">${c.unit}</div><div class="ac">${c.co}</div><span class="atag tin">In</span></div>`).join('')
+    :'<div class="empty-msg">No check-ins today</div>';
+}
+
+// ══════════════════════════════════════════════════════════
+// SRC / SAKEN
+// ══════════════════════════════════════════════════════════
+function buildSRC(){
+  const rr=(l,v,c)=>`<div class="sr"><div class="srl">${l}</div><div class="srv" style="color:${c||'var(--tx)'}">${v}</div></div>`;
+  document.getElementById('src-st').innerHTML=
+    rr('Total SRC Units',S.src.total,'var(--mu2)')+
+    rr('Occupied Units',S.src.occ,'var(--gr)')+
+    rr('SRC Occupancy',S.src.pct.toFixed(1)+'%','var(--acc)')+
+    rr('MTD Rooms Sold',S.src.mtdR,'var(--bl)')+
+    rr('MTD Residents',S.src.mtdRes,'var(--bl)');
+  document.getElementById('sak-st').innerHTML=
+    rr('Short Stay %',S.sak.short.toFixed(2)+'%','var(--acc)')+
+    rr('Long Stay %',S.sak.long.toFixed(2)+'%','var(--bl)')+
+    rr('Total Occupancy %',S.sak.total.toFixed(1)+'%','var(--gr)')+
+    rr('Bachelor Units',S.gt.bach||321,'var(--mu2)')+
+    rr('Family Units',S.gt.fam||72,'var(--mu2)');
+}
+
+// ══════════════════════════════════════════════════════════
+// WORLD MAP
+// ══════════════════════════════════════════════════════════
+function mapVal(iso){const d=S.nat[iso];return d?(mapMode==='pax'?d.pax:d.rooms):0;}
+function mapColor(v,max){
+  if(!v)return null;
+  const t=v/max;
+  if(t<0.05)return'#1a3d7a';if(t<0.12)return'#1e5fbb';if(t<0.25)return'#2272d8';
+  if(t<0.45)return'#38a8e8';if(t<0.65)return'#f5b020';if(t<0.85)return'#e87020';
+  return'#e82020';
+}
+function setMapMode(m,btn){
+  mapMode=m;
+  document.querySelectorAll('.mbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  if(mapBuilt)updateMapColors();
+}
+function showTT(ev,iso){
+  const d=S.nat[iso];if(!d)return;
+  const tt=document.getElementById('mtt');tt.style.display='block';
+  document.getElementById('mtt-iso').textContent=iso;
+  document.getElementById('mtt-name').textContent=d.name||iso;
+  document.getElementById('mtt-stat').textContent=d.pax+' Pax  ·  '+d.rooms+' Rooms';
+  let x=ev.clientX+15,y=ev.clientY-12;
+  if(x+180>window.innerWidth)x=ev.clientX-190;
+  document.getElementById('mtt').style.left=x+'px';
+  document.getElementById('mtt').style.top=y+'px';
+}
+function hideTT(){document.getElementById('mtt').style.display='none';}
+
+function buildWorldMap(){
+  const mw=document.getElementById('mapwrap');
+  const W=mw.clientWidth||920,H=Math.round(W*0.47);
+  const allVals=Object.values(S.nat).map(d=>mapMode==='pax'?d.pax:d.rooms);
+  const maxVal=Math.max(...allVals,1);
+  document.getElementById('mmax').textContent=maxVal;
+  document.getElementById('mco').textContent=Object.keys(S.nat).length;
+  document.getElementById('mpx').textContent=Object.values(S.nat).reduce((s,d)=>s+d.pax,0);
+
+  const svg=d3.select('#mapwrap').html('').append('svg')
+    .attr('viewBox',`0 0 ${W} ${H}`).attr('preserveAspectRatio','xMidYMid meet')
+    .style('background','#07101e').style('width','100%').style('display','block');
+  svg.append('rect').attr('width',W).attr('height',H).attr('fill','#07101e');
+  const proj=d3.geoNaturalEarth1().scale(W/6.4).translate([W/2,H/2]);
+  const path=d3.geoPath().projection(proj);
+  const g=svg.append('g');
+  g.append('path').datum(d3.geoGraticule()()).attr('d',path)
+    .attr('fill','none').attr('stroke','#0b1e30').attr('stroke-width',0.5);
+
+  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+  .then(r=>r.json()).then(world=>{
+    const countries=topojson.feature(world,world.objects.countries);
+
+    // Country fills
+    g.selectAll('.cl').data(countries.features).enter().append('path')
+      .attr('class','cl').attr('d',path)
+      .attr('fill',d=>{const iso=TOPO[String(d.id).padStart(3,'0')];return iso&&S.nat[iso]?mapColor(mapVal(iso),maxVal):'#142014';})
+      .attr('stroke','#1e3a1e').attr('stroke-width',0.4)
+      .attr('data-iso',d=>TOPO[String(d.id).padStart(3,'0')]||'')
+      .style('cursor',d=>{const iso=TOPO[String(d.id).padStart(3,'0')];return iso&&S.nat[iso]?'pointer':'default';})
+      .on('mousemove',function(ev,d){const iso=TOPO[String(d.id).padStart(3,'0')];if(iso&&S.nat[iso])showTT(ev,iso);})
+      .on('mouseleave',hideTT);
+
+    // Borders
+    g.append('path').datum(topojson.mesh(world,world.objects.countries,(a,b)=>a!==b))
+      .attr('fill','none').attr('stroke','#243424').attr('stroke-width',0.5).attr('d',path);
+
+    // Bubbles — with large invisible hit area for all countries
+    const gl=g.append('g');
+    countries.features.forEach(feat=>{
+      const iso=TOPO[String(feat.id).padStart(3,'0')];
+      if(!iso||!S.nat[iso])return;
+      const v=mapVal(iso),col=mapColor(v,maxVal);
+      const cent=path.centroid(feat);
+      if(!cent||isNaN(cent[0])||isNaN(cent[1]))return;
+      const r=Math.max(10,Math.min(24,Math.sqrt(v)*3.4));
+      // Glow
+      gl.append('circle').attr('cx',cent[0]).attr('cy',cent[1]).attr('r',r+5)
+        .attr('fill',col).attr('fill-opacity',0.13).attr('pointer-events','none');
+      // Bubble
+      gl.append('circle').attr('class','bc').attr('cx',cent[0]).attr('cy',cent[1]).attr('r',r)
+        .attr('fill',col).attr('fill-opacity',0.92).attr('stroke','rgba(255,255,255,.2)').attr('stroke-width',1)
+        .attr('data-iso',iso).style('cursor','pointer')
+        .on('mousemove',ev=>showTT(ev,iso)).on('mouseleave',hideTT);
+      // Count label
+      gl.append('text').attr('class','bl').attr('x',cent[0]).attr('y',cent[1]+0.5)
+        .attr('text-anchor','middle').attr('dominant-baseline','middle')
+        .attr('fill','white').attr('font-size',Math.max(7,Math.min(11,r*0.55)))
+        .attr('font-weight','700').attr('font-family','Syne,sans-serif')
+        .attr('pointer-events','none').attr('data-iso',iso).text(v);
+      // Large invisible hit area — catches tiny countries
+      gl.append('circle').attr('cx',cent[0]).attr('cy',cent[1])
+        .attr('r',Math.max(r+10,20)).attr('fill','transparent')
+        .attr('data-iso',iso).style('cursor','pointer')
+        .on('mousemove',ev=>showTT(ev,iso)).on('mouseleave',hideTT);
+    });
+
+    // Jubail marker
+    const jc=proj([49.65,26.95]);
+    if(jc&&!isNaN(jc[0])){
+      const jg=g.append('g');
+      [22,13].forEach((r,i)=>jg.append('circle').attr('cx',jc[0]).attr('cy',jc[1]).attr('r',r)
+        .attr('fill','none').attr('stroke','#10b981').attr('stroke-width',i?1.4:.7).attr('opacity',i?.65:.2));
+      jg.append('circle').attr('cx',jc[0]).attr('cy',jc[1]).attr('r',5)
+        .attr('fill','#10b981').attr('stroke','white').attr('stroke-width',1);
+      jg.append('text').attr('x',jc[0]+9).attr('y',jc[1]-8)
+        .attr('fill','#10b981').attr('font-size',8).attr('font-family','Syne,sans-serif')
+        .attr('font-weight','700').attr('pointer-events','none').text('JUBAIL HQ');
+    }
+  }).catch(()=>{
+    document.getElementById('mapwrap').innerHTML='<div style="height:280px;display:flex;align-items:center;justify-content:center;color:var(--mu2);flex-direction:column;gap:8px"><div style="font-size:30px">🌍</div><div style="font-size:13px">World map requires internet connection</div><div style="font-size:11px;color:var(--mu)">All other tabs work fully offline</div></div>';
+  });
+}
+
+function updateMapColors(){
+  const maxVal=Math.max(...Object.values(S.nat).map(d=>mapMode==='pax'?d.pax:d.rooms),1);
+  d3.selectAll('.cl').attr('fill',function(){const iso=this.getAttribute('data-iso');return iso&&S.nat[iso]?mapColor(mapVal(iso),maxVal):'#142014';});
+  d3.selectAll('.bc').attr('fill',function(){const iso=this.getAttribute('data-iso');return iso&&S.nat[iso]?mapColor(mapVal(iso),maxVal):'#1a4a8a';});
+  d3.selectAll('.bl').text(function(){const iso=this.getAttribute('data-iso');return iso&&S.nat[iso]?mapVal(iso):'';});
+  document.getElementById('mmax').textContent=maxVal;
+}
+
+// ══════════════════════════════════════════════════════════
+// NAT LIST & BAR
+// ══════════════════════════════════════════════════════════
+function buildNatList(){
+  const sorted=Object.entries(S.nat).sort((a,b)=>b[1].pax-a[1].pax);
+  if(!sorted.length){document.getElementById('nat-list').innerHTML='<div style="color:var(--mu);padding:16px;font-size:12px">No nationality data found</div>';return;}
+  const maxP=sorted[0][1].pax;
+  document.getElementById('nat-list').innerHTML=sorted.map(([iso,d],i)=>`
+    <div class="nrow"><div class="niso">${iso}</div><div class="nnm">${d.name}</div>
+    <div class="nbw"><div class="nbf" style="width:${(d.pax/maxP*100).toFixed(0)}%;background:${COLS[i%COLS.length]}"></div></div>
+    <div class="nct" style="color:${COLS[i%COLS.length]}">${d.pax}</div></div>`).join('');
+}
+
+function buildNatBar(){
+  const sorted=Object.entries(S.nat).sort((a,b)=>b[1].pax-a[1].pax);
+  if(!sorted.length)return;
+  if(CH.nat)CH.nat.destroy();
+  CH.nat=new Chart(document.getElementById('ch-nat'),{
+    type:'bar',
+    data:{labels:sorted.map(([iso])=>iso),datasets:[{data:sorted.map(([,d])=>d.pax),backgroundColor:sorted.map((_,i)=>COLS[i%COLS.length]),borderRadius:5,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${sorted[c.dataIndex][1].name}: ${c.raw} pax`}}},
+      scales:{x:{ticks:{color:'#8ba4c0',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#8ba4c0'},grid:{color:'#1c2d44'}}}}
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// GUESTS TABLE
+// ══════════════════════════════════════════════════════════
+let allG=[];
+function buildGuests(){
+  allG=[...S.guests];
+  const nats=[...new Set(allG.map(g=>g.nat).filter(Boolean))].sort();
+  const sel=document.getElementById('f-nat');
+  sel.innerHTML='<option value="">All Nationalities</option>';
+  nats.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
+  document.getElementById('g-pill').textContent=allG.length+' guests';
+  renderG(allG);
+}
+const SC={'Long Stay':'sl','Short Stay':'ss','TravelAgnt':'ss'};
+function renderG(gs){
+  document.getElementById('g-body').innerHTML=gs.map(g=>`<tr>
+    <td style="font-family:Syne,sans-serif;font-weight:700;color:var(--bl)">${g.room}</td>
+    <td style="font-weight:500;font-size:12px">${g.name}</td>
+    <td style="color:var(--mu2);font-size:11px">${g.co}</td>
+    <td><span class="sb ${SC[g.seg]||'sl'}">${g.seg}</span></td>
+    <td style="color:var(--mu2)">${g.type}</td>
+    <td><span class="ntag">${g.nat}</span></td>
+    <td style="text-align:center">${g.pax}</td>
+    <td style="color:var(--mu2);font-size:11px">${g.doa}</td>
+    <td style="color:var(--mu2);font-size:11px">${g.dod}</td>
+    <td style="font-family:Syne,sans-serif;font-size:12px">${g.rack.toFixed(0)}</td>
+    <td style="color:var(--gr);font-family:Syne,sans-serif;font-size:12px">${g.charged.toFixed(2)}</td>
+  </tr>`).join('');
+  document.getElementById('g-lbl').textContent=`Showing ${gs.length} of ${allG.length} guests`;
+}
+function filterG(){
+  const q=document.getElementById('g-search').value.toLowerCase();
+  const seg=document.getElementById('f-seg').value;
+  const type=document.getElementById('f-type').value;
+  const nat=document.getElementById('f-nat').value;
+  const sob=document.getElementById('f-sob').value;
+  renderG(allG.filter(g=>{
+    if(seg&&g.seg!==seg)return false;
+    if(type&&g.type!==type)return false;
+    if(nat&&g.nat!==nat)return false;
+    if(sob&&g.sob!==sob)return false;
+    if(q&&!`${g.room} ${g.name} ${g.co} ${g.nat}`.toLowerCase().includes(q))return false;
+    return true;
+  }));
+}
+
+// ══════════════════════════════════════════════════════════
+// COMPANIES
+// ══════════════════════════════════════════════════════════
+function buildCompanies(){
+  const cos=S.companies;
+  document.getElementById('co-kpis').innerHTML=[
+    {l:'Total Companies',v:cos.length,s:'Active corporate clients',c:'var(--acc)'},
+    {l:'Top Client',v:(cos[0]?.name||'—').substring(0,15)+'…',s:`${cos[0]?.rooms||0} rooms · ${cos[0]?.pax||0} pax`,c:'var(--bl)',fs:'15px'},
+    {l:'Occupied Rooms',v:cos.reduce((s,c)=>s+c.rooms,0),s:'All present guests',c:'var(--gr)'},
+    {l:'Total Pax',v:cos.reduce((s,c)=>s+c.pax,0),s:'People in compound',c:'var(--pu)'},
+  ].map(k=>`<div class="kpi"><div class="kl">${k.l}</div><div class="kv" style="color:${k.c};${k.fs?'font-size:'+k.fs:''}">${k.v}</div><div class="ksub">${k.s}</div><div class="ks" style="background:${k.c}"></div></div>`).join('');
+  const maxR=cos[0]?.rooms||1;
+  document.getElementById('co-list').innerHTML=cos.map((c,i)=>`
+    <div class="coi"><div class="cork">${i+1}</div><div class="conm">${c.name}</div>
+    <div class="cobw"><div class="cob" style="width:${(c.rooms/maxR*100).toFixed(0)}%"></div></div>
+    <div class="corm">${c.rooms}</div><div class="copx">${c.pax}p</div></div>`).join('');
+  const top12=cos.slice(0,12);
+  if(CH.co)CH.co.destroy();
+  CH.co=new Chart(document.getElementById('ch-co'),{
+    type:'bar',
+    data:{
+      labels:top12.map(c=>c.name.length>16?c.name.substring(0,16)+'…':c.name),
+      datasets:[
+        {label:'Rooms',data:top12.map(c=>c.rooms),backgroundColor:'#3b82f6',borderRadius:4,borderWidth:0},
+        {label:'Pax',data:top12.map(c=>c.pax),backgroundColor:'#e8a020',borderRadius:4,borderWidth:0}
+      ]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{color:'#8ba4c0',font:{size:11},padding:8}}},
+      scales:{x:{ticks:{color:'#8ba4c0',font:{size:10}},grid:{color:'#1c2d44'}},y:{ticks:{color:'#8ba4c0',font:{size:9}},grid:{display:false}}}}
+  });
+  document.getElementById('ch-co').style.maxHeight='440px';
+}
+
+// ══════════════════════════════════════════════════════════
+// REVENUE
+// ══════════════════════════════════════════════════════════
+function buildRevenue(){
+  const rack =S.companies.reduce((s,c)=>s+c.rack,0);
+  const chg  =S.companies.reduce((s,c)=>s+c.charged,0);
+  const occ  =S.guests.length, avail=S.gt.units||718;
+  const avg  =occ?chg/occ:0, revpar=avail?chg/avail:0, disc=rack-chg;
+  function f(n){if(n>=1000000)return'SAR '+(n/1000000).toFixed(2)+'M';if(n>=1000)return'SAR '+(n/1000).toFixed(1)+'K';return'SAR '+n.toFixed(0);}
+  document.getElementById('rev-kpis').innerHTML=[
+    {l:'Total Rack Rate',v:f(rack),s:'Full rate / night',c:'var(--acc)'},
+    {l:'Total Charged',v:f(chg),s:'Actual billed',c:'var(--bl)'},
+    {l:'Discount Given',v:f(disc),s:'Rack minus charged',c:'var(--rd)'},
+    {l:'Avg Rate / Unit',v:'SAR '+avg.toFixed(0),s:'Per night',c:'var(--pu)'},
+    {l:'RevPAR',v:'SAR '+revpar.toFixed(0),s:'Per available unit',c:'var(--gr)'},
+    {l:'Rate Capture',v:(rack>0?(chg/rack*100):0).toFixed(1)+'%',s:'Charged vs rack',c:'var(--acc)'},
+  ].map(k=>`<div class="kpi"><div class="kl">${k.l}</div><div class="kv" style="color:${k.c}">${k.v}</div><div class="ksub">${k.s}</div><div class="ks" style="background:${k.c}"></div></div>`).join('');
+
+  // Unit type chart
+  const occKeys=Object.entries(S.occ).filter(([k])=>!k.includes('Grand Total'));
+  if(CH.ru)CH.ru.destroy();
+  CH.ru=new Chart(document.getElementById('ch-runit'),{
+    type:'bar',
+    data:{
+      labels:occKeys.map(([,d])=>d.label),
+      datasets:[
+        {label:'Est. Rack',data:occKeys.map(([,d])=>d.total*800),backgroundColor:'rgba(59,130,246,0.3)',borderColor:'#3b82f6',borderWidth:1.5,borderRadius:5},
+        {label:'Est. Charged',data:occKeys.map(([,d])=>Math.round(d.total*175)),backgroundColor:'#e8a020',borderRadius:5,borderWidth:0}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{color:'#8ba4c0',font:{size:11},padding:8}}},
+      scales:{x:{ticks:{color:'#8ba4c0',font:{size:9},maxRotation:30},grid:{display:false}},y:{ticks:{color:'#8ba4c0',callback:v=>'SAR '+(v/1000).toFixed(0)+'k'},grid:{color:'#1c2d44'}}}}
+  });
+  const topco=[...S.companies].filter(c=>c.charged>0).sort((a,b)=>b.charged-a.charged).slice(0,10);
+  if(CH.rco)CH.rco.destroy();
+  CH.rco=new Chart(document.getElementById('ch-rco'),{
+    type:'bar',
+    data:{
+      labels:topco.map(c=>c.name.length>14?c.name.substring(0,14)+'…':c.name),
+      datasets:[{data:topco.map(c=>c.charged),backgroundColor:COLS,borderRadius:5,borderWidth:0}]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` SAR ${c.raw.toLocaleString()}`}}},
+      scales:{x:{ticks:{color:'#8ba4c0',callback:v=>'SAR '+(v/1000).toFixed(1)+'k'},grid:{color:'#1c2d44'}},y:{ticks:{color:'#8ba4c0',font:{size:9}},grid:{display:false}}}}
+  });
+}
+</script>
+</body>
+</html>
